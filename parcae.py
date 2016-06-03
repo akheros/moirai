@@ -5,16 +5,27 @@ import sys
 def up(args):
     import configparser
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True)
     try:
         config.read(args.config)
     except:
         print('Could not parse configuration file "%s"' % args.config)
         raise
-    if config.sections() == []:
-        print('Did not find any section in configuration file "%s"'
-                % args.config)
+
+    if not 'Cluster' in config:
+        print('Did not find a cluster section in "%s"' % args.config)
         sys.exit(1)
+
+    if not 'machines' in config['Cluster']:
+        print('The "Cluster" section must contain a list of machines')
+        sys.exit(1)
+
+    for machine in [m.strip() for m in config['Cluster']['machines'].split(',')
+            if m.strip() != '']:
+        if not machine in config:
+            print('Machine', machine, 'is not described')
+            sys.exit(1)
+        print(config.items(machine))
 
 
 

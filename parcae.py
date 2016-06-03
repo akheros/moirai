@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
 import sys
+import lib.utils as utils
+from lib.vagrantwriter import VagrantWriter
+
 
 def up(args):
+    """Handles the 'up' command."""
     import configparser
 
     config = configparser.ConfigParser(allow_no_value=True)
@@ -20,12 +24,15 @@ def up(args):
         print('The "Cluster" section must contain a list of machines')
         sys.exit(1)
 
-    for machine in [m.strip() for m in config['Cluster']['machines'].split(',')
-            if m.strip() != '']:
+    vagrant = VagrantWriter()
+
+    for machine in utils.parse_wordlist(config['Cluster']['machines']):
         if not machine in config:
             print('Machine', machine, 'is not described')
             sys.exit(1)
-        print(config.items(machine))
+        for k,v in config.items(machine):
+            vagrant.add_option(machine, k, v)
+    vagrant.write_config(args.target)
 
 
 
@@ -45,6 +52,10 @@ if __name__ == '__main__':
             help='specify a config file to use',
             default='parcae.ini',
             dest='config')
+    parser_up.add_argument('-t', '--target',
+            help='specify the target base directory for vagrant',
+            default='./',
+            dest='target')
     parser_up.set_defaults(func=up)
 
     # Parse argument and execute command

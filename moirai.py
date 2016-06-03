@@ -41,7 +41,7 @@ if __name__ == '__main__':
     import argparse
 
     # Top level parser
-    parser = argparse.ArgumentParser(prog='parcae')
+    parser = argparse.ArgumentParser(prog='moirai')
     subparsers = parser.add_subparsers(title='subcommands',
             help='additional help')
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
             help='provision and start the cluster')
     parser_up.add_argument('-c', '--config',
             help='specify a config file to use',
-            default='parcae.ini',
+            default='moirai.ini',
             dest='config')
     parser_up.add_argument('-t', '--target',
             help='specify the target base directory for vagrant',

@@ -5,8 +5,8 @@ import lib.utils as utils
 from lib.vagrantwriter import VagrantWriter
 
 
-def up(args):
-    """Handles the 'up' command."""
+def create(args):
+    """Handles the 'create' command."""
     import configparser
 
     config = configparser.ConfigParser(allow_no_value=True)
@@ -34,6 +34,15 @@ def up(args):
             vagrant.add_option(machine, k, v)
     vagrant.write_config(args.target)
 
+def up(args):
+    """Handles the 'up' command."""
+    import os.path
+    import subprocess
+
+    if not os.path.isfile(args.target + 'Vagrantfile'):
+        print('Generating vagrant configuration')
+        create(args)
+    subprocess.run(['vagrant', 'up'])
 
 
 
@@ -42,20 +51,25 @@ if __name__ == '__main__':
 
     # Top level parser
     parser = argparse.ArgumentParser(prog='moirai')
-    subparsers = parser.add_subparsers(title='subcommands',
-            help='additional help')
-
-    # Parser for the "up" command
-    parser_up = subparsers.add_parser('up',
-            help='provision and start the cluster')
-    parser_up.add_argument('-c', '--config',
+    parser.add_argument('-c', '--config',
             help='specify a config file to use',
             default='moirai.ini',
             dest='config')
-    parser_up.add_argument('-t', '--target',
+    parser.add_argument('-t', '--target',
             help='specify the target base directory for vagrant',
             default='./',
             dest='target')
+    subparsers = parser.add_subparsers(title='subcommands',
+            help='additional help')
+
+    # Parser for the "create" command
+    parser_create = subparsers.add_parser('create',
+            help='create the vagrant configuration file')
+    parser_create.set_defaults(func=create)
+
+    # Parser for the "up" command
+    parser_up = subparsers.add_parser('up',
+            help='launches all the VMs using vagrant and creates the vagrant configuration if it doesn\'t exist')
     parser_up.set_defaults(func=up)
 
     # Parse argument and execute command

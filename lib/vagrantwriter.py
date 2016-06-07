@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from collections import OrderedDict
+import lib.utils as utils
 
 class VagrantWriter:
 
@@ -51,8 +52,19 @@ class VagrantWriter:
                         f.write('    %s.vm.network "private_network", type: "dhcp"\n'
                                 % machine)
                     else:
-                        f.write('    %s.vm.network "private_network", ip: "%s"'
+                        f.write('    %s.vm.network "private_network", ip: "%s"\n'
                                 % (machine, conf['ip']))
+                if 'shares' in conf:
+                    try:
+                        shares = utils.parse_associations(conf['shares'])
+                        for share in shares:
+                            f.write('    %s.vm.synced_folder "%s", "%s"\n'
+                                    % (machine, share[0], share[1]))
+                    except Exception as err:
+                        print('Could not parse shares. Check the syntax')
+                        print('The expected syntax is one share per line')
+                        print('A share is in this form: "host-folder" -> "guest-folder"')
+                        print(err)
                 f.write('  end\n\n')
             f.write('end\n')
             print('Vagrantfile generated in', target)

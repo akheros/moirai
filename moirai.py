@@ -44,6 +44,11 @@ def up(args):
         create(args)
     subprocess.run(['vagrant', 'up'])
 
+def down(args):
+    """Handles the 'down' command."""
+    import subprocess
+    subprocess.run(['vagrant', 'halt'])
+
 
 
 if __name__ == '__main__':
@@ -71,6 +76,11 @@ if __name__ == '__main__':
     parser_up = subparsers.add_parser('up',
             help='launches all the VMs using vagrant and creates the vagrant configuration if it doesn\'t exist')
     parser_up.set_defaults(func=up)
+
+    # Parser for the "down" command
+    parser_down = subparsers.add_parser('down',
+            help='stops the scenario and halts the VMs')
+    parser_down.set_defaults(func=down)
 
     # Parse argument and execute command
     args = parser.parse_args()

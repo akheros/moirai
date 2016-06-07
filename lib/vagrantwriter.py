@@ -3,23 +3,6 @@
 from collections import OrderedDict
 
 class VagrantWriter:
-#config.vm.box
-
-#config.vm.box_url -> file://
-
-#config.vm.communicator -> ssh|winrm
-#config.vm.guest -> :linux|:windows
-#config.vm.network
-#config.vm.provision
-#config.vm.synced_folder
-
-    prefix = """Vagrant.configure("2") do |config|"""
-    postfix = """end"""
-    machine_prefix = """  config.vm.define "%s" do |%s|"""
-    machine_postfix = """  end"""
-
-    def format_config(vmname, option, value):
-        return '%s.vm.%s = %s' % (vname, option, value)
 
     def __init__(self):
         self.conf = OrderedDict()
@@ -31,7 +14,9 @@ class VagrantWriter:
 
     def write_config(self, target):
         with open(target + 'Vagrantfile', 'w') as f:
-            f.write('Vagrant.configure("2") do |config|\n')
+            f.write('# -*- mode: ruby -*-\n')
+            f.write('# vi: set ft=ruby :\n\n')
+            f.write('Vagrant.configure("2") do |config|\n\n')
             for machine in self.conf:
                 conf = self.conf[machine]
                 f.write('  config.vm.define "%s" do |%s|\n'
@@ -39,19 +24,36 @@ class VagrantWriter:
                 if 'box' in conf:
                     f.write('    %s.vm.box = "%s"\n' % (machine, conf['box']))
                 if 'box_url' in conf:
-                    f.write('    %s.vm.box_url = "file://%s"\n'
+                    f.write('    %s.vm.box_url = "%s"\n'
                             % (machine, conf['box_url']))
                 if 'guest' in conf:
+                    winrm = False
                     if conf['guest'] == 'windows':
-                        f.write('    %s.vm.communicator = "winrm"\n' % machine)
                         f.write('    %s.vm.guest = :windows\n' % machine)
-                if 'network' in conf:
-                    pass
-                if 'provision' in conf:
-                    pass
-                if 'synced_folder' in conf:
-                    pass
-                f.write('  end\n')
+                        f.write('    %s.vm.communicator = "winrm"\n' % machine)
+                        winrm = True
+                if 'username' in conf:
+                    if winrm:
+                        f.write('    %s.winrm.username = "%s"\n'
+                                % (machine, conf['username']))
+                    else:
+                        f.write('    %s.ssh.username = "%s"\n'
+                                % (machine, conf['username']))
+                if 'password' in conf:
+                    if winrm:
+                        f.write('    %s.winrm.password = "%s"\n'
+                                % (machine, conf['password']))
+                    else:
+                        f.write('    %s.ssh.password = "%s"\n'
+                                % (machine, conf['password']))
+                if 'ip' in conf:
+                    if conf['ip'] == 'dhcp':
+                        f.write('    %s.vm.network "private_network", type: "dhcp"\n'
+                                % machine)
+                    else:
+                        f.write('    %s.vm.network "private_network", ip: "%s"'
+                                % (machine, conf['ip']))
+                f.write('  end\n\n')
             f.write('end\n')
             print('Vagrantfile generated in', target)
 

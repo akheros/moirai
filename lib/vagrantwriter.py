@@ -7,11 +7,27 @@ class VagrantWriter:
 
     def __init__(self):
         self.conf = OrderedDict()
+        self.forwards = {}
+        self.next_port = 2000
 
     def add_option(self, machine, option, value):
         if not machine in self.conf:
             self.conf[machine] = {}
         self.conf[machine][option] = value
+
+    def forward_default(self, machine, is_windows):
+        new_port = str(self.next_port)
+        self.next_port += 1
+        self.forwards[machine] = (new_port, is_windows)
+        ret = ''
+        if is_windows:
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: 55985, id:"winrm", disabled: true\n'
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5986, host: 55986, id:"winrm-ssl", disabled: true\n'
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: ' + new_port +'\n'
+        else:
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 22, host: 2222, id:"ssh", disabled: true\n'
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 22, host: ' + new_port +'\n'
+        return ret
 
     @staticmethod
     def mount_share(machine, share, share_letter, is_windows):
@@ -64,6 +80,7 @@ class VagrantWriter:
                     else:
                         f.write('    %s.vm.network "private_network", ip: "%s"\n'
                                 % (machine, conf['ip']))
+                f.write(self.forward_default(machine, winrm))
                 share_letter = 'Z'
                 f.write(self.mount_share(machine, ('./', '/vagrant'), share_letter, winrm))
                 share_letter = chr(ord(share_letter) - 1)

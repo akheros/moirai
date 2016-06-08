@@ -9,22 +9,53 @@ class Configuration:
         self.conf = OrderedDict()
         self.forwards = {}
         self.next_port = 2000
+        self.tasks = OrderedDict()
 
     def add_option(self, machine, option, value):
         if not machine in self.conf:
             self.conf[machine] = {}
         self.conf[machine][option] = value
 
+    def add_forwards(self):
+        for machine, conf in self.conf.items():
+            if not machine in self.forwards:
+                self.forwards[machine] = {}
+            is_windows = (conf.get('guest', 'linux') == 'windows')
+
+            # Add default redirects
+            if is_windows:
+                self.forwards[machine][5985] = self.next_port
+            else:
+                self.forwards[machine][22] = self.next_port
+            self.next_port += 1
+
+            # TODO: parse additional redirects
+
+    def add_task(self, task, conf, timing):
+        try:
+            timing = utils.parse_timing(conf['timing'], timing)
+        except Exception as err:
+            print('Could not parse the timing for task', task)
+            print(err)
+
+        self.tasks[task] = {'target': conf['target'],
+                'action': conf['action'],
+                'timing': timing}
+        return timing
+
+    def reorder_tasks(self):
+        self.tasks = OrderedDict(sorted(self.tasks.items(),
+            key=lambda x: x[1]['timing']))
+
     def forward_default(self, machine, is_windows):
-        new_port = str(self.next_port)
-        self.next_port += 1
-        self.forwards[machine] = (new_port, is_windows)
         ret = ''
         if is_windows:
+            new_port = str(self.forwards[machine][5985])
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: 55985, id:"winrm", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5986, host: 55986, id:"winrm-ssl", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: ' + new_port +'\n'
         else:
+            new_port = str(self.forwards[machine][22])
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 22, host: 2222, id:"ssh", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 22, host: ' + new_port +'\n'
         return ret

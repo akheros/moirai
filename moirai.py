@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import time
 import lib.utils as utils
 from lib.configuration import Configuration
 
@@ -23,6 +24,14 @@ def parse_config(args):
         print('The "Cluster" section must contain a list of machines')
         sys.exit(1)
 
+    if not 'Scenario' in config:
+        print('Did not find a cluster section in "%s"' % args.config)
+        sys.exit(1)
+
+    if not 'tasks' in config['Scenario']:
+        print('The "Cluster" section must contain a list of machines')
+        sys.exit(1)
+
     configuration = Configuration()
 
     for machine in utils.parse_wordlist(config['Cluster']['machines']):
@@ -32,7 +41,20 @@ def parse_config(args):
         for k,v in config.items(machine):
             configuration.add_option(machine, k, v)
 
+    configuration.add_forwards()
+
+    timing = 0
+    for task in utils.parse_wordlist(config['Scenario']['tasks']):
+        if not task in config:
+            print('Task', task, 'is not described')
+            sys.exit(1)
+        timing = configuration.add_task(task, config[task], timing)
+    configuration.reorder_tasks()
+
     return configuration
+
+def launch_task(task, conf):
+    print('launching task', task, 'with conf', conf)
 
 def spin(args):
     """Handles the 'spin' command."""
@@ -60,9 +82,21 @@ def halt(args):
     subprocess.run(['vagrant', 'halt'])
 
 def play(args):
-    pass
+    """Handles the 'play' command."""
+    from threading import Timer
+
+    config = parse_config(args)
+
+    tasks = []
+    for task, conf in config.tasks.items():
+        t = Timer(conf['timing'], launch_task, args=(task, conf))
+        t.start()
+        tasks.append(t)
+    #for t in tasks:
+    #    t.join()
 
 def stop(args):
+    """Handles the 'stop' command."""
     pass
 
 

@@ -4,6 +4,15 @@ import sys
 import lib.utils as utils
 from lib.vagrantwriter import VagrantWriter
 
+def spin(args):
+    """Handles the 'spin' command."""
+    up(args)
+    play(args)
+
+def cut(args):
+    """Handles the 'cut' command."""
+    stop(args)
+    halt(args)
 
 def create(args):
     """Handles the 'create' command."""
@@ -36,19 +45,19 @@ def create(args):
 
 def up(args):
     """Handles the 'up' command."""
-    import os.path
     import subprocess
-
-    if not os.path.isfile(args.target + 'Vagrantfile'):
-        print('Generating vagrant configuration')
-        create(args)
     subprocess.run(['vagrant', 'up'])
 
-def down(args):
-    """Handles the 'down' command."""
+def halt(args):
+    """Handles the 'halt' command."""
     import subprocess
     subprocess.run(['vagrant', 'halt'])
 
+def play(args):
+    pass
+
+def stop(args):
+    pass
 
 
 if __name__ == '__main__':
@@ -64,8 +73,17 @@ if __name__ == '__main__':
             help='specify the target base directory for vagrant',
             default='./',
             dest='target')
-    subparsers = parser.add_subparsers(title='subcommands',
-            help='additional help')
+    subparsers = parser.add_subparsers(title='subcommands')
+
+    # Parser for the "spin" command
+    parser_spin = subparsers.add_parser('spin',
+            help='creates the Vms if necessary and plays the scenario')
+    parser_spin.set_defaults(func=spin)
+
+    # Parser for the "cut" command
+    parser_cut = subparsers.add_parser('cut',
+            help='stops the scenario and kills the VMs')
+    parser_cut.set_defaults(func=cut)
 
     # Parser for the "create" command
     parser_create = subparsers.add_parser('create',
@@ -74,13 +92,23 @@ if __name__ == '__main__':
 
     # Parser for the "up" command
     parser_up = subparsers.add_parser('up',
-            help='launches all the VMs using vagrant and creates the vagrant configuration if it doesn\'t exist')
+            help='launches all the VMs using vagrant')
     parser_up.set_defaults(func=up)
 
-    # Parser for the "down" command
-    parser_down = subparsers.add_parser('down',
-            help='stops the scenario and halts the VMs')
-    parser_down.set_defaults(func=down)
+    # Parser for the "halt" command
+    parser_halt = subparsers.add_parser('halt',
+            help='halts the VMs')
+    parser_halt.set_defaults(func=halt)
+
+    # Parser for the "play" command
+    parser_play = subparsers.add_parser('play',
+            help='plays the scenario')
+    parser_play.set_defaults(func=play)
+
+    # Parser for the "stop" command
+    parser_stop = subparsers.add_parser('stop',
+            help='stops the scenario')
+    parser_stop.set_defaults(func=stop)
 
     # Parse argument and execute command
     args = parser.parse_args()

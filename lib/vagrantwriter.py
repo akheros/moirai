@@ -13,12 +13,23 @@ class VagrantWriter:
             self.conf[machine] = {}
         self.conf[machine][option] = value
 
+    @staticmethod
+    def mount_share(machine, share, share_letter, is_windows):
+        ret = ''
+        if is_windows:
+            ret += '    ' + machine + '.vm.provision "shell" do |s|\n'
+            ret += '      s.name = "mounting share ' + share[0] + '"\n'
+            ret += '      s.inline = "net use /P:Yes ' + share_letter + ': \\\\\\\\VBOXSVR\\\\' + share[1][1:] + '"\n'
+            ret += '    end\n'
+        return ret
+
     def write_config(self, target):
         with open(target + 'Vagrantfile', 'w') as f:
             f.write('# -*- mode: ruby -*-\n')
             f.write('# vi: set ft=ruby :\n\n')
             f.write('Vagrant.configure("2") do |config|\n\n')
             for machine in self.conf:
+                winrm = False
                 conf = self.conf[machine]
                 f.write('  config.vm.define "%s" do |%s|\n'
                         % (machine, machine))
@@ -28,7 +39,6 @@ class VagrantWriter:
                     f.write('    %s.vm.box_url = "%s"\n'
                             % (machine, conf['box_url']))
                 if 'guest' in conf:
-                    winrm = False
                     if conf['guest'] == 'windows':
                         f.write('    %s.vm.guest = :windows\n' % machine)
                         f.write('    %s.vm.communicator = "winrm"\n' % machine)
@@ -54,12 +64,17 @@ class VagrantWriter:
                     else:
                         f.write('    %s.vm.network "private_network", ip: "%s"\n'
                                 % (machine, conf['ip']))
+                share_letter = 'Z'
+                f.write(self.mount_share(machine, ('./', '/vagrant'), share_letter, winrm))
+                share_letter = chr(ord(share_letter) - 1)
                 if 'shares' in conf:
                     try:
                         shares = utils.parse_associations(conf['shares'])
                         for share in shares:
                             f.write('    %s.vm.synced_folder "%s", "%s"\n'
                                     % (machine, share[0], share[1]))
+                            f.write(self.mount_share(machine, share, share_letter, winrm))
+                            share_letter = chr(ord(share_letter) - 1)
                     except Exception as err:
                         print('Could not parse shares. Check the syntax')
                         print('The expected syntax is one share per line')

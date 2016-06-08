@@ -3,7 +3,7 @@
 from collections import OrderedDict
 import lib.utils as utils
 
-class VagrantWriter:
+class Configuration:
 
     def __init__(self):
         self.conf = OrderedDict()
@@ -39,7 +39,9 @@ class VagrantWriter:
             ret += '    end\n'
         return ret
 
-    def write_config(self, target):
+    def write_vagrantfile(self, target):
+        if target[-1] != '/':
+            target += '/'
         with open(target + 'Vagrantfile', 'w') as f:
             f.write('# -*- mode: ruby -*-\n')
             f.write('# vi: set ft=ruby :\n\n')
@@ -99,5 +101,5 @@ class VagrantWriter:
                         print(err)
                 f.write('  end\n\n')
             f.write('end\n')
-            print('Vagrantfile generated in', target)
+            print('Vagrantfile written to ' + target + 'Vagrantfile')
 

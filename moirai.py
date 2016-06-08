@@ -2,20 +2,10 @@
 
 import sys
 import lib.utils as utils
-from lib.vagrantwriter import VagrantWriter
+from lib.configuration import Configuration
 
-def spin(args):
-    """Handles the 'spin' command."""
-    up(args)
-    play(args)
-
-def cut(args):
-    """Handles the 'cut' command."""
-    stop(args)
-    halt(args)
-
-def create(args):
-    """Handles the 'create' command."""
+def parse_config(args):
+    """Parses the configuration file and returns a configuration object."""
     import configparser
 
     config = configparser.ConfigParser(allow_no_value=True)
@@ -33,15 +23,31 @@ def create(args):
         print('The "Cluster" section must contain a list of machines')
         sys.exit(1)
 
-    vagrant = VagrantWriter()
+    configuration = Configuration()
 
     for machine in utils.parse_wordlist(config['Cluster']['machines']):
         if not machine in config:
             print('Machine', machine, 'is not described')
             sys.exit(1)
         for k,v in config.items(machine):
-            vagrant.add_option(machine, k, v)
-    vagrant.write_config(args.target)
+            configuration.add_option(machine, k, v)
+
+    return configuration
+
+def spin(args):
+    """Handles the 'spin' command."""
+    up(args)
+    play(args)
+
+def cut(args):
+    """Handles the 'cut' command."""
+    stop(args)
+    halt(args)
+
+def create(args):
+    """Handles the 'create' command."""
+    config = parse_config(args)
+    config.write_vagrantfile(args.target)
 
 def up(args):
     """Handles the 'up' command."""

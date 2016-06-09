@@ -41,7 +41,8 @@ class Configuration:
         self.tasks[task] = {'target': conf['target'],
                 'action': conf['action'],
                 'timing': timing,
-                'files': conf.get('files', '')}
+                'files': conf.get('files', ''),
+                'artifacts': conf.get('artifacts', '')}
         return timing
 
     def reorder_tasks(self):

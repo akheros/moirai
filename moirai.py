@@ -65,19 +65,20 @@ def launch_task(task, conf, config):
         launch = launch_ssh
     launch(conf['action'],
             conf['files'],
+            conf['artifacts'],
             machine.get('username', 'vagrant'),
             machine.get('password', 'vagrant'),
             config.forwards[conf['target']])
 
-def launch_winrm(action, files, username, password, forwards):
+def launch_winrm(action, files, artifacts, username, password, forwards):
     import winrm
     import base64
 
+    chunk = 400
     session = winrm.Session('localhost:' + str(forwards[5985]), 
             auth=(username, password))
     try:
         for filename in files.split('\n'):
-            print("Transferring file", filename)
             if filename == '':
                 continue
             if '->' in filename:
@@ -92,7 +93,7 @@ if (Test-Path $filePath) {{
             """.format(location=destination)
             cmd = session.run_ps(script)
             with open(filename, 'rb') as f:
-                data = f.read(400)
+                data = f.read(chunk)
                 while len(data) > 0:
                     script = """
 $filePath = "{location}"
@@ -107,7 +108,7 @@ add-content -value $data -encoding byte -path $filePath
                     if cmd.status_code == 1:
                         print('Could not copy file', filename)
                         print(cmd.std_err.decode('utf-8'))
-                    data = f.read(400)
+                    data = f.read(chunk)
 
         for line in action.split('\n'):
             if line == '':
@@ -118,11 +119,38 @@ add-content -value $data -encoding byte -path $filePath
             print(cmd.std_out.decode('utf-8'))
             print('  STDERR:')
             print(cmd.std_err.decode('utf-8'))
+
+        for filename in artifacts.split('\n'):
+            if filename == '':
+                continue
+            if '->' in filename:
+                filename, destination = utils.parse_associations(filename)[0]
+            else:
+                destination = filename
+            with open(destination, 'wb') as f:
+                offset = 0
+                while True:
+                    script = """
+$filePath = "{location}"
+$buffer = New-Object byte[] {chunk}
+$reader = [System.IO.File]::OpenRead($filepath)
+$reader.Position = {offset}
+$bytesRead = $reader.Read($buffer, 0, {chunk});
+[Convert]::ToBase64String($buffer, 0, $bytesRead)
+                    """.format(location=filename,
+                            chunk=chunk,
+                            offset=offset)
+                    cmd = session.run_ps(script)
+                    data = cmd.std_out.decode('utf-8').replace('\r\n','')
+                    if len(data) == 0:
+                        break
+                    f.write(base64.b64decode(data))
+                    offset += chunk
     except:
         print('Winrm error running command')
         raise
 
-def launch_ssh(action, files, username, password, forwards):
+def launch_ssh(action, files, artifacts, username, password, forwards):
     import paramiko
 
     port = forwards[22]
@@ -138,9 +166,7 @@ def launch_ssh(action, files, username, password, forwards):
                 filename, destination = utils.parse_associations(filename)[0]
             else:
                 destination = filename
-            print(filename, '->', destination)
             sftp.put(filename, destination)
-        transport.close()
     except:
         print('SFTP error when copying files')
         raise
@@ -167,6 +193,20 @@ def launch_ssh(action, files, username, password, forwards):
         client.close()
     except:
         print('SSH error running command')
+        raise
+
+    try:
+        for filename in artifacts.split('\n'):
+            if filename == '':
+                continue
+            if '->' in filename:
+                filename, destination = utils.parse_associations(filename)[0]
+            else:
+                destination = filename
+            sftp.get(filename, destination)
+        transport.close()
+    except:
+        print('SFTP error when copying artifacts')
         raise
 
 def spin(args):

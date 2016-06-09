@@ -80,6 +80,13 @@ def launch_winrm(action, files, username, password, forwards):
             print("Transferring file", filename)
             if filename == '':
                 continue
+            script = """
+$filePath = "{location}"
+if (Test-Path $filePath) {{
+  Remove-Item $filePath
+}}
+            """.format(location=filename)
+            cmd = session.run_ps(script)
             with open(filename, 'rb') as f:
                 data = f.read(400)
                 while len(data) > 0:

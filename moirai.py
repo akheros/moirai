@@ -53,8 +53,105 @@ def parse_config(args):
 
     return configuration
 
-def launch_task(task, conf):
-    print('launching task', task, 'with conf', conf)
+def launch_task(task, conf, config):
+    """Connects to the target and launches the task."""
+    print('launching task', task)
+
+    machine = config.conf[conf['target']]
+    winrm = (machine.get('guest') == 'windows')
+    if winrm:
+        launch = launch_winrm
+    else:
+        launch = launch_ssh
+    launch(conf['action'],
+            conf['files'],
+            machine.get('username', 'vagrant'),
+            machine.get('password', 'vagrant'),
+            config.forwards[conf['target']])
+
+def launch_winrm(action, files, username, password, forwards):
+    import winrm
+    import base64
+
+    session = winrm.Session('localhost:' + str(forwards[5985]), 
+            auth=(username, password))
+    try:
+        for filename in files.split('\n'):
+            print("Transferring file", filename)
+            if filename == '':
+                continue
+            with open(filename, 'rb') as f:
+                data = f.read(400)
+                while len(data) > 0:
+                    script = """
+$filePath = "{location}"
+$s = @"
+{b64_content}
+"@
+$data = [System.Convert]::FromBase64String($s)
+add-content -value $data -encoding byte -path $filePath
+                    """.format(location=filename,
+                            b64_content = base64.b64encode(data).decode('utf-8'))
+                    cmd = session.run_ps(script)
+                    if cmd.status_code == 1:
+                        print('Could not copy file', filename)
+                        print(cmd.std_err.decode('utf-8'))
+                    data = f.read(400)
+
+        for line in action.split('\n'):
+            if line == '':
+                continue
+            cmd = session.run_ps(line)
+            print('  return code:', cmd.status_code)
+            print('  STDOUT:')
+            print(cmd.std_out.decode('utf-8'))
+            print('  STDERR:')
+            print(cmd.std_err.decode('utf-8'))
+    except:
+        print('Winrm error running command')
+        raise
+
+def launch_ssh(action, files, username, password, forwards):
+    import paramiko
+
+    port = forwards[22]
+
+    transport = paramiko.Transport(('localhost', port))
+    try:
+        transport.connect(None, username, password)
+        sftp = transport.open_sftp_client()
+        for filename in files.split('\n'):
+            if filename == '':
+                continue
+            sftp.put(filename, filename)
+        transport.close()
+    except:
+        print('SFTP error when copying files')
+        raise
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect('localhost',
+                port=port,
+                username=username,
+                password=password,
+                allow_agent=False,
+                look_for_keys=False)
+        for line in action.split('\n'):
+            if line == '':
+                continue
+            stdin, stdout, stderr = client.exec_command(line)
+            exit_code = stdout.channel.recv_exit_status()
+            print('  return code:', exit_code)
+            print('  STDOUT:')
+            print(stdout.read().decode('utf-8'))
+            print('  STDERR:')
+            print(stderr.read().decode('utf-8'))
+        client.close()
+    except:
+        print('SSH error running command')
+        raise
 
 def spin(args):
     """Handles the 'spin' command."""
@@ -89,7 +186,7 @@ def play(args):
 
     tasks = []
     for task, conf in config.tasks.items():
-        t = Timer(conf['timing'], launch_task, args=(task, conf))
+        t = Timer(conf['timing'], launch_task, args=(task, conf, config))
         t.start()
         tasks.append(t)
     #for t in tasks:

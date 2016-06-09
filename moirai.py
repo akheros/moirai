@@ -80,12 +80,16 @@ def launch_winrm(action, files, username, password, forwards):
             print("Transferring file", filename)
             if filename == '':
                 continue
+            if '->' in filename:
+                filename, destination = utils.parse_associations(filename)[0]
+            else:
+                destination = filename
             script = """
 $filePath = "{location}"
 if (Test-Path $filePath) {{
   Remove-Item $filePath
 }}
-            """.format(location=filename)
+            """.format(location=destination)
             cmd = session.run_ps(script)
             with open(filename, 'rb') as f:
                 data = f.read(400)
@@ -97,7 +101,7 @@ $s = @"
 "@
 $data = [System.Convert]::FromBase64String($s)
 add-content -value $data -encoding byte -path $filePath
-                    """.format(location=filename,
+                    """.format(location=destination,
                             b64_content = base64.b64encode(data).decode('utf-8'))
                     cmd = session.run_ps(script)
                     if cmd.status_code == 1:
@@ -130,7 +134,12 @@ def launch_ssh(action, files, username, password, forwards):
         for filename in files.split('\n'):
             if filename == '':
                 continue
-            sftp.put(filename, filename)
+            if '->' in filename:
+                filename, destination = utils.parse_associations(filename)[0]
+            else:
+                destination = filename
+            print(filename, '->', destination)
+            sftp.put(filename, destination)
         transport.close()
     except:
         print('SFTP error when copying files')

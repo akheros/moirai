@@ -4,6 +4,7 @@ import sys
 import time
 import lib.utils as utils
 from lib.configuration import Configuration
+from lib.task import Task
 
 def parse_config(args):
     """Parses the configuration file and returns a configuration object."""
@@ -53,162 +54,6 @@ def parse_config(args):
 
     return configuration
 
-def launch_task(task, conf, config):
-    """Connects to the target and launches the task."""
-    print('launching task', task)
-
-    machine = config.conf[conf['target']]
-    winrm = (machine.get('guest') == 'windows')
-    if winrm:
-        launch = launch_winrm
-    else:
-        launch = launch_ssh
-    launch(conf['action'],
-            conf['files'],
-            conf['artifacts'],
-            machine.get('username', 'vagrant'),
-            machine.get('password', 'vagrant'),
-            config.forwards[conf['target']])
-
-def launch_winrm(action, files, artifacts, username, password, forwards):
-    import winrm
-    import base64
-
-    chunk = 400
-    session = winrm.Session('localhost:' + str(forwards[5985]), 
-            auth=(username, password))
-    try:
-        for filename in files.split('\n'):
-            if filename == '':
-                continue
-            if '->' in filename:
-                filename, destination = utils.parse_associations(filename)[0]
-            else:
-                destination = filename
-            script = """
-$filePath = "{location}"
-if (Test-Path $filePath) {{
-  Remove-Item $filePath
-}}
-            """.format(location=destination)
-            cmd = session.run_ps(script)
-            with open(filename, 'rb') as f:
-                data = f.read(chunk)
-                while len(data) > 0:
-                    script = """
-$filePath = "{location}"
-$s = @"
-{b64_content}
-"@
-$data = [System.Convert]::FromBase64String($s)
-add-content -value $data -encoding byte -path $filePath
-                    """.format(location=destination,
-                            b64_content = base64.b64encode(data).decode('utf-8'))
-                    cmd = session.run_ps(script)
-                    if cmd.status_code == 1:
-                        print('Could not copy file', filename)
-                        print(cmd.std_err.decode('utf-8'))
-                    data = f.read(chunk)
-
-        for line in action.split('\n'):
-            if line == '':
-                continue
-            cmd = session.run_ps(line)
-            print('  return code:', cmd.status_code)
-            print('  STDOUT:')
-            print(cmd.std_out.decode('utf-8'))
-            print('  STDERR:')
-            print(cmd.std_err.decode('utf-8'))
-
-        for filename in artifacts.split('\n'):
-            if filename == '':
-                continue
-            if '->' in filename:
-                filename, destination = utils.parse_associations(filename)[0]
-            else:
-                destination = filename
-            with open(destination, 'wb') as f:
-                offset = 0
-                while True:
-                    script = """
-$filePath = "{location}"
-$buffer = New-Object byte[] {chunk}
-$reader = [System.IO.File]::OpenRead($filepath)
-$reader.Position = {offset}
-$bytesRead = $reader.Read($buffer, 0, {chunk});
-[Convert]::ToBase64String($buffer, 0, $bytesRead)
-                    """.format(location=filename,
-                            chunk=chunk,
-                            offset=offset)
-                    cmd = session.run_ps(script)
-                    data = cmd.std_out.decode('utf-8').replace('\r\n','')
-                    if len(data) == 0:
-                        break
-                    f.write(base64.b64decode(data))
-                    offset += chunk
-    except:
-        print('Winrm error running command')
-        raise
-
-def launch_ssh(action, files, artifacts, username, password, forwards):
-    import paramiko
-
-    port = forwards[22]
-
-    transport = paramiko.Transport(('localhost', port))
-    try:
-        transport.connect(None, username, password)
-        sftp = transport.open_sftp_client()
-        for filename in files.split('\n'):
-            if filename == '':
-                continue
-            if '->' in filename:
-                filename, destination = utils.parse_associations(filename)[0]
-            else:
-                destination = filename
-            sftp.put(filename, destination)
-    except:
-        print('SFTP error when copying files')
-        raise
-
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        client.connect('localhost',
-                port=port,
-                username=username,
-                password=password,
-                allow_agent=False,
-                look_for_keys=False)
-        for line in action.split('\n'):
-            if line == '':
-                continue
-            stdin, stdout, stderr = client.exec_command(line)
-            exit_code = stdout.channel.recv_exit_status()
-            print('  return code:', exit_code)
-            print('  STDOUT:')
-            print(stdout.read().decode('utf-8'))
-            print('  STDERR:')
-            print(stderr.read().decode('utf-8'))
-        client.close()
-    except:
-        print('SSH error running command')
-        raise
-
-    try:
-        for filename in artifacts.split('\n'):
-            if filename == '':
-                continue
-            if '->' in filename:
-                filename, destination = utils.parse_associations(filename)[0]
-            else:
-                destination = filename
-            sftp.get(filename, destination)
-        transport.close()
-    except:
-        print('SFTP error when copying artifacts')
-        raise
-
 def spin(args):
     """Handles the 'spin' command."""
     up(args)
@@ -241,12 +86,12 @@ def play(args):
     config = parse_config(args)
 
     tasks = []
-    for task, conf in config.tasks.items():
-        t = Timer(conf['timing'], launch_task, args=(task, conf, config))
+    for task, items in config.tasks.items():
+        t = Timer(items['timing'], Task.run_task, args=(task, items, config))
         t.start()
         tasks.append(t)
-    #for t in tasks:
-    #    t.join()
+    for t in tasks:
+        t.join()
 
 def stop(args):
     """Handles the 'stop' command."""

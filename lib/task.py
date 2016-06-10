@@ -1,10 +1,11 @@
 import base64
 import paramiko
 import winrm
+from . import utils
 
 class Task:
     def __init__(self, task, actions, files, artifacts):
-        self.name = task
+        self.task = task
         self.actions = actions
         self.files = files
         self.artifacts = artifacts
@@ -75,7 +76,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                     filename, destination = utils.parse_associations(filename)[0]
                 else:
                     destination = filename
-                cmd = session.run_ps(self.del_script.format(location=destination))
+                cmd = self.session.run_ps(self.del_script.format(location=destination))
                 if cmd.status_code == 1:
                     print('[{}] File already exists and cannot be deleted: {}'
                             .format(self.task, filename))
@@ -84,7 +85,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                 with open(filename, 'rb') as f:
                     data = f.read(self.chunk)
                     while len(data) > 0:
-                        cmd = session.run_ps(self.send_script.format(
+                        cmd = self.session.run_ps(self.send_script.format(
                             location=destination,
                             b64_content=base64.b64encode(data).decode('utf-8')))
                         if cmd.status_code == 1:
@@ -92,7 +93,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                                     .format(self.task, filename))
                             print(cmd.std_err.decode('utf-8'))
                             break
-                        data = f.read(chunk)
+                        data = f.read(self.chunk)
         except:
             print('[{}] Winrm error while sending files'.format(self.task))
             raise
@@ -109,9 +110,9 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                 with open(destination, 'wb') as f:
                     offset = 0
                     while True:
-                        cmd = session.run_ps(self.recv_script.format(
+                        cmd = self.session.run_ps(self.recv_script.format(
                             location=filename,
-                            chunk=chunk,
+                            chunk=self.chunk,
                             offset=offset))
                         if cmd.status_code == 1:
                             print('[{}] Could not retrieve artifact: {}'
@@ -122,7 +123,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                         if len(data) == 0:
                             break
                         f.write(base64.b64decode(data))
-                        offset += chunk
+                        offset += self.chunk
         except:
             print('[{}] Winrm error retrieving artifacts'.format(self.task))
             raise
@@ -132,11 +133,11 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
             for line in self.actions.split('\n'):
                 if line == '':
                     continue
-                cmd = session.run_ps(line)
-                print('[{}]  return code:', cmd.status_code)
-                print('[{}]  STDOUT:')
+                cmd = self.session.run_ps(line)
+                print('[{}]  return code:'.format(self.task), cmd.status_code)
+                print('[{}]  STDOUT:'.format(self.task))
                 print(cmd.std_out.decode('utf-8'))
-                print('[{}]  STDERR:')
+                print('[{}]  STDERR:'.format(self.task))
                 print(cmd.std_err.decode('utf-8'))
         except:
             print('[{}] Winrm error executing actions'.format(self.task))
@@ -173,7 +174,7 @@ class SshTask(Task):
         try:
             transport.connect(None, self.username, self.password)
             sftp = transport.open_sftp_client()
-            for filename in artifacts.split('\n'):
+            for filename in self.artifacts.split('\n'):
                 if filename == '':
                     continue
                 if '->' in filename:

@@ -1,5 +1,9 @@
+import base64
+import paramiko
+import winrm
+
 class Task:
-    def __init__(task, actions, files, artifacts, username, password, forwards):
+    def __init__(self, task, actions, files, artifacts):
         self.name = task
         self.actions = actions
         self.files = files
@@ -33,9 +37,6 @@ class Task:
 
 
 class WinrmTask(Task):
-    import winrm
-    import base64
-
     chunk = 400
     del_script = """
 $filePath = "{location}"
@@ -60,12 +61,12 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 [Convert]::ToBase64String($buffer, 0, $bytesRead)
    """
 
-    def __init__(task, actions, files, artifacts, username, password, forwards):
-        super().__init__()
+    def __init__(self, task, actions, files, artifacts, username, password, forwards):
+        super().__init__(task, actions, files, artifacts)
         self.session = winrm.Session('localhost:' + str(forwards[5985]),
                 auth=(username, password))
 
-    def send_files():
+    def send_files(self):
         try:
             for filename in self.files.split('\n'):
                 if filename == '':
@@ -96,7 +97,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
             print('[{}] Winrm error while sending files'.format(self.task))
             raise
 
-    def recv_artifacts():
+    def recv_artifacts(self):
         try:
             for filename in self.artifacts.split('\n'):
                 if filename == '':
@@ -126,7 +127,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
             print('[{}] Winrm error retrieving artifacts'.format(self.task))
             raise
 
-    def exec_actions():
+    def exec_actions(self):
         try:
             for line in self.actions.split('\n'):
                 if line == '':
@@ -143,16 +144,14 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 
 
 class SshTask(Task):
-    import paramiko
-
-    def __init__(task, actions, files, artifacts, username, password, forwards):
-        super().__init__()
+    def __init__(self, task, actions, files, artifacts, username, password, forwards):
+        super().__init__(task, actions, files, artifacts)
         self.port = forwards[22]
         self.username = username
         self.password = password
 
-    def send_files():
-        transport = paramiko.Transport(('localhost', port))
+    def send_files(self):
+        transport = paramiko.Transport(('localhost', self.port))
         try:
             transport.connect(None, self.username, self.password)
             sftp = transport.open_sftp_client()
@@ -169,8 +168,8 @@ class SshTask(Task):
             print('[{}] SFTP error while sending files'.format(self.task))
             raise
 
-    def recv_artifacts():
-        transport = paramiko.Transport(('localhost', port))
+    def recv_artifacts(self):
+        transport = paramiko.Transport(('localhost', self.port))
         try:
             transport.connect(None, self.username, self.password)
             sftp = transport.open_sftp_client()
@@ -187,7 +186,7 @@ class SshTask(Task):
             print('[{}] SFTP error while retrieving artifacts'.format(self.task))
             raise
 
-    def exec_actions():
+    def exec_actions(self):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:

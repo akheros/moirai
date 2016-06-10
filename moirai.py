@@ -6,53 +6,6 @@ import lib.utils as utils
 from lib.configuration import Configuration
 from lib.task import Task
 
-def parse_config(args):
-    """Parses the configuration file and returns a configuration object."""
-    import configparser
-
-    config = configparser.ConfigParser(allow_no_value=True)
-    try:
-        config.read(args.config)
-    except:
-        print('Could not parse configuration file "%s"' % args.config)
-        raise
-
-    if not 'Cluster' in config:
-        print('Did not find a cluster section in "%s"' % args.config)
-        sys.exit(1)
-
-    if not 'machines' in config['Cluster']:
-        print('The "Cluster" section must contain a list of machines')
-        sys.exit(1)
-
-    if not 'Scenario' in config:
-        print('Did not find a cluster section in "%s"' % args.config)
-        sys.exit(1)
-
-    if not 'tasks' in config['Scenario']:
-        print('The "Cluster" section must contain a list of machines')
-        sys.exit(1)
-
-    configuration = Configuration()
-
-    for machine in utils.parse_wordlist(config['Cluster']['machines']):
-        if not machine in config:
-            print('Machine', machine, 'is not described')
-            sys.exit(1)
-        for k,v in config.items(machine):
-            configuration.add_option(machine, k, v)
-
-    configuration.add_forwards()
-
-    timing = 0
-    for task in utils.parse_wordlist(config['Scenario']['tasks']):
-        if not task in config:
-            print('Task', task, 'is not described')
-            sys.exit(1)
-        timing = configuration.add_task(task, config[task], timing)
-    configuration.reorder_tasks()
-
-    return configuration
 
 def spin(args):
     """Handles the 'spin' command."""
@@ -66,7 +19,7 @@ def cut(args):
 
 def create(args):
     """Handles the 'create' command."""
-    config = parse_config(args)
+    config = lib.parse_config(args)
     config.write_vagrantfile(args.target)
 
 def up(args):
@@ -83,7 +36,7 @@ def play(args):
     """Handles the 'play' command."""
     from threading import Timer
 
-    config = parse_config(args)
+    config = lib.parse_config(args)
 
     tasks = []
     for task, items in config.tasks.items():

@@ -3,8 +3,6 @@
 import sys
 import time
 import lib.utils as utils
-from lib.configuration import Configuration
-from lib.task import Task
 
 
 def spin(args):
@@ -19,24 +17,30 @@ def cut(args):
 
 def create(args):
     """Handles the 'create' command."""
-    config = lib.parse_config(args)
+    from lib.configuration import Configuration
+
+    config = utils.parse_config(args, Configuration())
     config.write_vagrantfile(args.target)
 
 def up(args):
     """Handles the 'up' command."""
     import subprocess
+
     subprocess.run(['vagrant', 'up'])
 
 def halt(args):
     """Handles the 'halt' command."""
     import subprocess
+
     subprocess.run(['vagrant', 'halt'])
 
 def play(args):
     """Handles the 'play' command."""
     from threading import Timer
+    from lib.configuration import Configuration
+    from lib.task import Task
 
-    config = lib.parse_config(args)
+    config = utils.parse_config(args, Configuration())
 
     tasks = []
     for task, items in config.tasks.items():

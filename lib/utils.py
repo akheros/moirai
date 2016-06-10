@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-def parse_config(args):
+def parse_config(args, configuration):
     """Parses the configuration file and returns a configuration object."""
     import configparser
 
@@ -26,8 +26,6 @@ def parse_config(args):
     if not 'tasks' in config['Scenario']:
         print('The "Cluster" section must contain a list of machines')
         sys.exit(1)
-
-    configuration = Configuration()
 
     for machine in parse_wordlist(config['Cluster']['machines']):
         if not machine in config:

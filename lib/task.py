@@ -1,7 +1,7 @@
 class Task:
-    def __init__(task, action, files, artifacts, username, password, forwards):
+    def __init__(task, actions, files, artifacts, username, password, forwards):
         self.name = task
-        self.action = action
+        self.actions = actions
         self.files = files
         self.artifacts = artifacts
 
@@ -13,7 +13,7 @@ class Task:
         winrm = (machine.get('guest') == 'windows')
         if winrm:
             task = WinrmTask(task,
-                    items['action'],
+                    items['actions'],
                     items['files'],
                     items['artifacts'],
                     machine.get('username', 'vagrant'),
@@ -21,7 +21,7 @@ class Task:
                     config.forwards[items['target']])
         else:
             task = SshTask(task,
-                    items['action'],
+                    items['actions'],
                     items['files'],
                     items['artifacts'],
                     machine.get('username', 'vagrant'),
@@ -60,7 +60,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 [Convert]::ToBase64String($buffer, 0, $bytesRead)
    """
 
-    def __init__(task, action, files, artifacts, username, password, forwards):
+    def __init__(task, actions, files, artifacts, username, password, forwards):
         super().__init__()
         self.session = winrm.Session('localhost:' + str(forwards[5985]),
                 auth=(username, password))
@@ -128,7 +128,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 
     def exec_actions():
         try:
-            for line in self.action.split('\n'):
+            for line in self.actions.split('\n'):
                 if line == '':
                     continue
                 cmd = session.run_ps(line)
@@ -145,7 +145,7 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 class SshTask(Task):
     import paramiko
 
-    def __init__(task, action, files, artifacts, username, password, forwards):
+    def __init__(task, actions, files, artifacts, username, password, forwards):
         super().__init__()
         self.port = forwards[22]
         self.username = username
@@ -197,7 +197,7 @@ class SshTask(Task):
                     password=self.password,
                     allow_agent=False,
                     look_for_keys=False)
-            for line in self.action.split('\n'):
+            for line in self.actions.split('\n'):
                 if line == '':
                     continue
                 stdin, stdout, stderr = client.exec_command(line)

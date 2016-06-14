@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import sys
+
 def parse_config(args, configuration):
     """Parses the configuration file and returns a configuration object."""
     import configparser

@@ -17,21 +17,16 @@ class Task:
         machine = config.conf[items['target']]
         winrm = (machine.get('guest') == 'windows')
         if winrm:
-            task = WinrmTask(task,
-                    items['actions'],
-                    items['files'],
-                    items['artifacts'],
-                    machine.get('username', 'vagrant'),
-                    machine.get('password', 'vagrant'),
-                    config.forwards[items['target']])
+            taskClass = WinrmTask
         else:
-            task = SshTask(task,
-                    items['actions'],
-                    items['files'],
-                    items['artifacts'],
-                    machine.get('username', 'vagrant'),
-                    machine.get('password', 'vagrant'),
-                    config.forwards[items['target']])
+            taskClass = SshTask
+        task = taskClass(task,
+                items.get('actions', ''),
+                items.get('files', ''),
+                items.get('artifacts', ''),
+                machine.get('username', 'vagrant'),
+                machine.get('password', 'vagrant'),
+                config.forwards[items['target']])
         task.send_files()
         task.exec_actions()
         task.recv_artifacts()

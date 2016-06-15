@@ -60,6 +60,7 @@ class Configuration:
         ret = ''
         if is_windows:
             new_port = str(self.forwards[machine][5985])
+            ret += '    ' + machine + '.vm.network :forwarded_port, guest: 22, host: 2222, id:"ssh", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: 55985, id:"winrm", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5986, host: 55986, id:"winrm-ssl", disabled: true\n'
             ret += '    ' + machine + '.vm.network :forwarded_port, guest: 5985, host: ' + new_port +'\n'

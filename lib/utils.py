@@ -45,6 +45,7 @@ def parse_config(args, configuration):
             sys.exit(1)
         timing = configuration.add_task(task, config[task], timing)
     configuration.reorder_tasks()
+    configuration.add_duration(config['Scenario'].get('duration', '0'))
 
     return configuration
 

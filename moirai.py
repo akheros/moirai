@@ -47,8 +47,26 @@ def play(args):
         t = Timer(items['timing'], Task.run_task, args=(task, items, config))
         t.start()
         tasks.append(t)
-    for t in tasks:
-        t.join()
+
+    duration = config.duration
+    if duration == 0:
+        for t in tasks:
+            t.join()
+    else:
+        start = time.time()
+        while time.time() > start + duration:
+            finished = True
+            for t in tasks:
+                if not t.finished.is_set():
+                    finished = False
+                    break
+            if finished:
+                sys.exit(0)
+            else:
+                time.sleep(1)
+        for t in tasks:
+            if not t.finished.is_set():
+                t.cancel
 
 def stop(args):
     """Handles the 'stop' command."""

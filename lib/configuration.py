@@ -49,6 +49,13 @@ class Configuration:
         self.tasks = OrderedDict(sorted(self.tasks.items(),
             key=lambda x: x[1]['timing']))
 
+    def add_duration(self, duration):
+        try:
+            self.duration = utils.parse_timing(duration, 0)
+        except Exception as err:
+            print('Could not parse the duration of the scenario')
+            print(err)
+
     def forward_default(self, machine, is_windows):
         ret = ''
         if is_windows:

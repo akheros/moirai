@@ -39,7 +39,7 @@ class Configuration:
             print(err)
 
         self.tasks[task] = {'target': conf['target'],
-                'actions': conf['actions'],
+                'actions': conf.get('actions', ''),
                 'timing': timing,
                 'files': conf.get('files', ''),
                 'artifacts': conf.get('artifacts', '')}

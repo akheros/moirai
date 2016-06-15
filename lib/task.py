@@ -21,9 +21,9 @@ class Task:
         else:
             taskClass = SshTask
         task = taskClass(task,
-                items.get('actions', ''),
-                items.get('files', ''),
-                items.get('artifacts', ''),
+                items['actions'],
+                items['files'],
+                items['artifacts'],
                 machine.get('username', 'vagrant'),
                 machine.get('password', 'vagrant'),
                 config.forwards[items['target']])

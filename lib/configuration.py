@@ -33,7 +33,7 @@ class Configuration:
 
     def add_task(self, task, conf, timing):
         try:
-            timing = utils.parse_timing(conf['timing'], timing)
+            timing = utils.parse_timing(conf.get('timing', '+0s'), timing)
         except Exception as err:
             print('Could not parse the timing for task', task)
             print(err)

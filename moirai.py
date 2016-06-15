@@ -45,6 +45,7 @@ def play(args):
     tasks = []
     for task, items in config.tasks.items():
         t = Timer(items['timing'], Task.run_task, args=(task, items, config))
+        t.daemon = True
         t.start()
         tasks.append(t)
 
@@ -54,19 +55,15 @@ def play(args):
             t.join()
     else:
         start = time.time()
-        while time.time() > start + duration:
+        while time.time() < start + duration:
             finished = True
             for t in tasks:
                 if not t.finished.is_set():
                     finished = False
                     break
             if finished:
-                sys.exit(0)
-            else:
-                time.sleep(1)
-        for t in tasks:
-            if not t.finished.is_set():
-                t.cancel
+                break
+            time.sleep(1)
 
 def stop(args):
     """Handles the 'stop' command."""

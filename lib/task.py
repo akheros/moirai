@@ -4,14 +4,15 @@ import winrm
 from . import utils
 
 class Task:
-    def __init__(self, task, actions, files, artifacts):
+    def __init__(self, task, number, actions, files, artifacts):
         self.task = task
+        self.number = number
         self.actions = actions
         self.files = files
         self.artifacts = artifacts
 
     @staticmethod
-    def run_task(task, items, config):
+    def run_task(task, number, items, config):
         print('launching task', task)
 
         machine = config.conf[items['target']]
@@ -21,6 +22,7 @@ class Task:
         else:
             taskClass = SshTask
         task = taskClass(task,
+                number,
                 items['actions'],
                 items['files'],
                 items['artifacts'],
@@ -34,6 +36,7 @@ class Task:
 
 class WinrmTask(Task):
     chunk = 400
+    http_port = 8000
     del_script = """
 $filePath = "{location}"
 if (Test-Path $filePath) {{
@@ -55,15 +58,30 @@ $reader = [System.IO.File]::OpenRead($filepath)
 $reader.Position = {offset}
 $bytesRead = $reader.Read($buffer, 0, {chunk});
 [Convert]::ToBase64String($buffer, 0, $bytesRead)
-   """
+    """
+    http_script = """
+(New-Object System.Net.WebClient).DownloadFile("{url}", "{location}")
+    """
 
-    def __init__(self, task, actions, files, artifacts, username, password, forwards):
-        super().__init__(task, actions, files, artifacts)
+
+    def __init__(self, task, number, actions, files, artifacts, username, password, forwards):
+        super().__init__(task, number, actions, files, artifacts)
         self.session = winrm.Session('localhost:' + str(forwards[5985]),
                 auth=(username, password))
 
     def send_files(self):
+        import socket
+        import http.server
+        import socketserver
+        from threading import Thread
         try:
+            ip = socket.gethostbyname(socket.gethostname())
+            httpd = socketserver.TCPServer((ip, self.http_port + self.number),
+                    http.server.SimpleHTTPRequestHandler)
+            thread = Thread(target=httpd.serve_forever)
+            thread.daemon = True
+            thread.start()
+            script = ""
             for filename in self.files.split('\n'):
                 if filename == '':
                     continue
@@ -71,24 +89,15 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                     filename, destination = utils.parse_associations(filename)[0]
                 else:
                     destination = filename
-                cmd = self.session.run_ps(self.del_script.format(location=destination))
-                if cmd.status_code == 1:
-                    print('[{}] File already exists and cannot be deleted: {}'
-                            .format(self.task, filename))
-                    print(cmd.std_err.decode('utf-8'))
-                    continue
-                with open(filename, 'rb') as f:
-                    data = f.read(self.chunk)
-                    while len(data) > 0:
-                        cmd = self.session.run_ps(self.send_script.format(
-                            location=destination,
-                            b64_content=base64.b64encode(data).decode('utf-8')))
-                        if cmd.status_code == 1:
-                            print('[{}] Could not copy file: {}'
-                                    .format(self.task, filename))
-                            print(cmd.std_err.decode('utf-8'))
-                            break
-                        data = f.read(self.chunk)
+                url = 'http://{ip}:{port}/{filename}'.format(
+                        ip=ip,
+                        port=str(self.http_port + self.number),
+                        filename=filename)
+                script += self.http_script.format(
+                        url=url,
+                        location=destination)
+            cmd = self.session.run_ps(script)
+            httpd.server_close()
         except:
             print('[{}] Winrm error while sending files'.format(self.task))
             raise
@@ -140,8 +149,8 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
 
 
 class SshTask(Task):
-    def __init__(self, task, actions, files, artifacts, username, password, forwards):
-        super().__init__(task, actions, files, artifacts)
+    def __init__(self, task, number, actions, files, artifacts, username, password, forwards):
+        super().__init__(task, number, actions, files, artifacts)
         self.port = forwards[22]
         self.username = username
         self.password = password

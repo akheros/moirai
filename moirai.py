@@ -44,7 +44,8 @@ def play(args):
 
     tasks = []
     for task, items in config.tasks.items():
-        t = Timer(items['timing'], Task.run_task, args=(task, items, config))
+        t = Timer(items['timing'], Task.run_task,
+                args=(task, len(tasks) + 1, items, config))
         t.daemon = True
         t.start()
         tasks.append(t)

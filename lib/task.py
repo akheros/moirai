@@ -96,7 +96,8 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
                 script += self.http_script.format(
                         url=url,
                         location=destination)
-            cmd = self.session.run_ps(script)
+            if script != "":
+                cmd = self.session.run_ps(script)
             httpd.server_close()
         except:
             print('[{}] Winrm error while sending files'.format(self.task))

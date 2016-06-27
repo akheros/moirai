@@ -138,12 +138,16 @@ $bytesRead = $reader.Read($buffer, 0, {chunk});
             for line in self.actions.split('\n'):
                 if line == '':
                     continue
+                print(' starting {}/{}'.format(self.task, line))
                 cmd = self.session.run_ps(line)
-                print('[{}]  return code:'.format(self.task), cmd.status_code)
-                print('[{}]  STDOUT:'.format(self.task))
-                print(cmd.std_out.decode('utf-8'))
-                print('[{}]  STDERR:'.format(self.task))
-                print(cmd.std_err.decode('utf-8'))
+                print('[{}/{}]'.format(self.task, line))
+                print(' ├ RETURN:', cmd.status_code)
+                print(' ├ STDOUT:')
+                utils.pretty_print(cmd.std_out.decode('utf-8'))
+                print(' ├ STDERR:')
+                utils.pretty_print(cmd.std_err.decode('utf-8'))
+                print(' └───')
+                print()
         except:
             print('[{}] Winrm error executing actions'.format(self.task))
             raise
@@ -205,13 +209,17 @@ class SshTask(Task):
             for line in self.actions.split('\n'):
                 if line == '':
                     continue
+                print(' starting {}/{}'.format(self.task, line))
                 stdin, stdout, stderr = client.exec_command(line)
                 exit_code = stdout.channel.recv_exit_status()
-                print('[{}]  return code:'.format(self.task), exit_code)
-                print('[{}]  STDOUT:'.format(self.task))
-                print(stdout.read().decode('utf-8'))
-                print('[{}]  STDERR:'.format(self.task))
-                print(stderr.read().decode('utf-8'))
+                print('[{}/{}]'.format(self.task, line))
+                print(' ├ RETURN:', exit_code)
+                print(' ├ STDOUT:')
+                utils.pretty_print(stdout.read().decode('utf-8'))
+                print(' ├ STDERR:')
+                utils.pretty_print(stderr.read().decode('utf-8'))
+                print(' └───')
+                print()
             client.close()
         except:
             print('[{}] SSH error executing actions'.format(self.task))

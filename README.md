@@ -18,10 +18,17 @@ exhaustive nor definite. Requests are welcome.
 - [ ] Retrieve artifacts if tasks are killed by global timeout
 
 
-## Technology
+## Dependencies
 
 moirai uses `vagrant` to manage virtual machines. It connects to these machines 
 using either `ssh` or `WinRM`.
+
+The necessary packages are:
+- vagrant
+- virtualbox
+- python 3
+- paramiko
+- pywinrm
 
 
 ## Quickstart

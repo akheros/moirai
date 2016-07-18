@@ -11,11 +11,11 @@ This is still a very early version. Capabilities are added when they are
 required. This is a short list of things that should be added. It is neither 
 exhaustive nor definite. Requests are welcome.
 
-[] Check windows' version and adjust behaviour
-[] Add capability to redirect arbitrary IPs and hostnames
-[] Mount shares in linux
-[] Add option to display GUI
-[] Retrieve artifacts if tasks are killed by global timeout
+- [ ] Check windows' version and adjust behaviour
+- [ ] Add capability to redirect arbitrary IPs and hostnames
+- [ ] Mount shares in linux
+- [ ] Add option to display GUI
+- [ ] Retrieve artifacts if tasks are killed by global timeout
 
 
 ## Technology

@@ -29,37 +29,37 @@ using either `ssh` or `WinRM`.
 1. Write a `moirai.ini` file describing your scenario:
     ```ini
     [Cluster]
-    machines = winxp
-    
+    machines = winxp, fedora
+
     [winxp]
-    box = winxp
+    box = IE8.XP.For.Vagrant
     guest = windows
     username = IEUser
     password = Passw0rd!
     ip = 192.168.51.5
-    shares = /tmp
-    
+    shares = /tmp -> host_tmp
+
     [fedora]
     box = fedora
     shares = /tmp -> host_tmp
-    
+
     [Scenario]
     tasks = check_disks, list_files
     duration = 2m
-    
+
     [check_disks]
     target = winxp
     timing = 10s
     actions = wmic logicaldisk get caption > disks.txt
     artifacts = disks.txt
-    
+
     [list_files]
     target = fedora
     timing = +10s
     actions = ls > file_list
-    	  sleep 10
+              sleep 10
     files = .bashrc
-    	.bash_history -> history
+            .bash_history -> history
     artifacts = file_list -> fedora_ls
     ```
    The `[Cluster]` section gives the name of each machine. Each machine is then 

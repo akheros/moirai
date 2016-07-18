@@ -27,55 +27,48 @@ using either `ssh` or `WinRM`.
 ## Quickstart
 
 1. Write a `moirai.ini` file describing your scenario:
-
-```ini
-[Cluster]
-machines = winxp
-
-[winxp]
-box = winxp
-guest = windows
-username = IEUser
-password = Passw0rd!
-ip = 192.168.51.5
-shares = /tmp
-
-[fedora]
-box = fedora
-shares = /tmp -> host_tmp
-
-[Scenario]
-tasks = check_disks, list_files
-duration = 2m
-
-[check_disks]
-target = winxp
-timing = 10s
-actions = wmic logicaldisk get caption > disks.txt
-artifacts = disks.txt
-
-[list_files]
-target = fedora
-timing = +10s
-actions = ls > file_list
-	  sleep 10
-files = .bashrc
-	.bash_history -> history
-artifacts = file_list -> fedora_ls
-```
-
-The `[Cluster]` section gives the name of each machine. Each machine is then 
-described in its own section. Then the `[Scenario]` section lists the name of 
-each task. The tasks are then described in their own sections.
-
-For more information on how each option works, check the [wiki](../../wiki).
-
-
+    ```ini
+    [Cluster]
+    machines = winxp
+    
+    [winxp]
+    box = winxp
+    guest = windows
+    username = IEUser
+    password = Passw0rd!
+    ip = 192.168.51.5
+    shares = /tmp
+    
+    [fedora]
+    box = fedora
+    shares = /tmp -> host_tmp
+    
+    [Scenario]
+    tasks = check_disks, list_files
+    duration = 2m
+    
+    [check_disks]
+    target = winxp
+    timing = 10s
+    actions = wmic logicaldisk get caption > disks.txt
+    artifacts = disks.txt
+    
+    [list_files]
+    target = fedora
+    timing = +10s
+    actions = ls > file_list
+    	  sleep 10
+    files = .bashrc
+    	.bash_history -> history
+    artifacts = file_list -> fedora_ls
+    ```
+   The `[Cluster]` section gives the name of each machine. Each machine is then 
+   described in its own section. Then the `[Scenario]` section lists the name of 
+   each task. The tasks are then described in their own sections. For more 
+   information on how each option works, check the [wiki](../../wiki).
 2. Use `moirai create` to generate a `Vagrantfile`. Check to see if you want to 
    add anything.
-
 3. `moirai up` launches the VMs and sets them up.
-
 4. `moirai play` plays the scenario
 
 

@@ -36,7 +36,7 @@ The necessary packages are:
 1. Write a `moirai.ini` file describing your scenario:
     ```ini
     [Cluster]
-    machines = winxp, fedora
+    machines = winxp, archlinux
 
     [winxp]
     box = IE8.XP.For.Vagrant
@@ -44,15 +44,15 @@ The necessary packages are:
     username = IEUser
     password = Passw0rd!
     ip = 192.168.51.5
-    shares = /tmp -> host_tmp
+    shares = /tmp -> /host_tmp
 
-    [fedora]
-    box = fedora
-    shares = /tmp -> host_tmp
+    [archlinux]
+    box = terrywang/archlinux
+    shares = /tmp -> /host_tmp
 
     [Scenario]
-    tasks = check_disks, list_files
-    duration = 2m
+    tasks = check_disks, list_files, sleep
+    duration = 1m
 
     [check_disks]
     target = winxp
@@ -61,13 +61,17 @@ The necessary packages are:
     artifacts = disks.txt
 
     [list_files]
-    target = fedora
+    target = archlinux
     timing = +10s
-    actions = ls > file_list
-              sleep 10
+    actions = ls -lah > file_list
     files = .bashrc
             .bash_history -> history
-    artifacts = file_list -> fedora_ls
+    artifacts = file_list -> archlinux_ls
+
+    [sleep]
+    target = archlinux
+    timing = +20s
+    actions = sleep 120
     ```
    The `[Cluster]` section gives the name of each machine. Each machine is then 
    described in its own section. Then the `[Scenario]` section lists the name of 

@@ -126,9 +126,3 @@ def pretty_print(data):
     for line in data.split('\n'):
         print(' │', line)
 
-if __name__ == '__main__':
-    try:
-        assert parse_wordlist('1, 2 , 3 ,,4,') == ['1', '2', '3', '4']
-        print('parse_wordlist works')
-    except:
-        print('parse_wordlist is broken')

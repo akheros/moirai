@@ -4,7 +4,7 @@ moirai has been developed to make it easy to create, replay and share scenarios.
 These scenarios are, for example, used to test security solutions and involve 
 multiple machines.
 
-The community can share scenarios [here](/akheros/moirai-scenarios).
+The community can share scenarios [here](../../../moirai-scenarios).
 
 
 ## State

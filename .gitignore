@@ -1,3 +1,5 @@
+.cache
+.coverage
 moirai.ini
 __pycache__
 Vagrantfile

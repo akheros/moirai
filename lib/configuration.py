@@ -19,7 +19,7 @@
 """
 
 from collections import OrderedDict
-import lib.utils as utils
+from . import utils
 
 class Configuration:
 

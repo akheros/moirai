@@ -76,10 +76,15 @@ def parse_associations(s):
     lines = s.split('\n')
     ret = []
     for line in lines:
+        if line.strip() == '':
+            continue
         a = line.split('->')
         if len(a) != 2:
-            raise Exception("Invalid number of arguments in association")
-        ret.append((a[0].strip(), a[1].strip()))
+            raise Exception("Invalid number of members")
+        left, right = [x.strip() for x in a]
+        if left == '' or right == '':
+            raise Exception("Empty member")
+        ret.append((left, right))
     return ret
 
 def parse_timing(string, timing):
@@ -112,14 +117,14 @@ def parse_timing(string, timing):
             tmp = 0
             last_unit = 's'
             continue
-        raise Exception("Unknown unit or wrong unit order in timing")
+        raise Exception("Unknown unit or wrong unit order")
     if tmp != 0:
         if last_unit == 'h':
             ret += tmp * 60
         if last_unit == 'm':
             ret += tmp
         if last_unit == 's':
-            raise Exception("Unknown unit or wrong unit order in timing")
+            raise Exception("No unit smaller than second")
     return ret
 
 def pretty_print(data):

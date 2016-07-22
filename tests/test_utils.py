@@ -1,7 +1,71 @@
 import pytest
 
 from context import utils
+from context import parser
+from context import configuration
 
+
+class TestParseConfig:
+    cluster_block = """
+[Cluster]
+machines = winxp, archlinux
+    """
+    machines_block = """
+[winxp]
+box = IE8.XP.For.Vagrant
+guest = windows
+username = IEUser
+password = Passw0rd!
+ip = 192.168.51.5
+shares = /tmp -> /host_tmp
+
+[archlinux]
+box = terrywang/archlinux
+shares = /tmp -> /host_tmp
+    """
+    scenario_block = """
+[Scenario]
+tasks = check_disks, list_files, sleep
+duration = 1m
+    """
+    tasks_block = """
+[check_disks]
+target = winxp
+timing = 10s
+actions = wmic logicaldisk get caption > disks.txt
+artifacts = disks.txt
+
+[list_files]
+target = archlinux
+timing = +10s
+actions = ls -lah > file_list
+files = .bashrc
+        .bash_history -> history
+artifacts = file_list -> archlinux_ls
+
+[sleep]
+target = archlinux
+timing = +20s
+actions = sleep 120
+    """
+
+    @staticmethod
+    def write_config(tmpdir, conf):
+        tmpfile = str(tmpdir.join("moirai.ini"))
+        with open(tmpfile, 'w') as f:
+            f.write(conf)
+        return tmpfile
+
+    def test_missing_cluster(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.machines_block +
+                TestParseConfig.scenario_block +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
 
 class TestParseWordlist:
     def test_wordlist(self):
@@ -80,4 +144,10 @@ class TestParseTiming:
         with pytest.raises(Exception) as ex:
             utils.parse_timing("5s3", 0)
         assert str(ex.value) == "No unit smaller than second"
+
+class TestPrettyPrint:
+    def test_pretty_print(self, capsys):
+        utils.pretty_print("aa")
+        out, _ = capsys.readouterr()
+        assert out == " │ aa\n"
 

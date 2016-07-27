@@ -1,14 +1,35 @@
 import pytest
 
+from collections import OrderedDict
+
 from context import utils
 from context import parser
 from context import configuration
 
 
 class TestParseConfig:
+    invalid_conf = """
+[CLuster
+machines = fedoar
+
+[fedora]
+box = 
+
+[Scnearios]
+tasks = dothis
+
+[dothat]
+target = dedora
+timgin
+actions = ls
+cd / && l
+    """
     cluster_block = """
 [Cluster]
 machines = winxp, archlinux
+    """
+    cluster_invalid = """
+[Cluster]
     """
     machines_block = """
 [winxp]
@@ -26,6 +47,10 @@ shares = /tmp -> /host_tmp
     scenario_block = """
 [Scenario]
 tasks = check_disks, list_files, sleep
+duration = 1m
+    """
+    scenario_invalid = """
+[Scenario]
 duration = 1m
     """
     tasks_block = """
@@ -49,12 +74,61 @@ timing = +20s
 actions = sleep 120
     """
 
+    conf_machines = OrderedDict([
+        ('winxp', {
+            'username': 'IEUser',
+            'shares': '/tmp -> /host_tmp',
+            'password': 'Passw0rd!',
+            'box': 'IE8.XP.For.Vagrant',
+            'guest': 'windows',
+            'ip': '192.168.51.5',
+            }),
+        ('archlinux', {
+            'shares': '/tmp -> /host_tmp',
+                'box': 'terrywang/archlinux',
+                }),
+            ])
+    conf_forwards = {
+            'winxp': {5985: 2000},
+            'archlinux': {22: 2001},
+            }
+    conf_tasks = OrderedDict([
+        ('check_disks', {
+            'target': 'winxp',
+                'artifacts': 'disks.txt',
+                'actions': 'wmic logicaldisk get caption > disks.txt',
+                'files': '',
+                'timing': 10,
+                }),
+        ('list_files', {
+            'target': 'archlinux',
+            'artifacts': 'file_list -> archlinux_ls',
+            'actions': 'ls -lah > file_list',
+            'files': '.bashrc\n.bash_history -> history',
+            'timing': 20,
+            }),
+        ('sleep', {
+            'target': 'archlinux',
+            'artifacts': '',
+            'actions': 'sleep 120',
+            'files': '', 'timing': 40,
+            }),
+        ])
+
     @staticmethod
     def write_config(tmpdir, conf):
         tmpfile = str(tmpdir.join("moirai.ini"))
         with open(tmpfile, 'w') as f:
             f.write(conf)
         return tmpfile
+
+    def test_invalid_conf(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir, TestParseConfig.invalid_conf)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(Exception) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert ex
 
     def test_missing_cluster(self, tmpdir):
         tmpfile = TestParseConfig.write_config(tmpdir,
@@ -66,6 +140,76 @@ actions = sleep 120
         with pytest.raises(SystemExit) as ex:
             utils.parse_config(args, configuration.Configuration())
         assert str(ex.value) == "1"
+
+    def test_invalid_cluster(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_invalid +
+                TestParseConfig.machines_block +
+                TestParseConfig.scenario_block +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
+
+    def test_missing_machines(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_block +
+                TestParseConfig.scenario_block +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
+
+    def test_missing_scenario(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_block +
+                TestParseConfig.machines_block +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
+
+    def test_invalid_scenario(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_block +
+                TestParseConfig.machines_block +
+                TestParseConfig.scenario_invalid +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
+
+    def test_missing_tasks(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_block +
+                TestParseConfig.machines_block +
+                TestParseConfig.scenario_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        with pytest.raises(SystemExit) as ex:
+            utils.parse_config(args, configuration.Configuration())
+        assert str(ex.value) == "1"
+
+    def test_valid_config(self, tmpdir):
+        tmpfile = TestParseConfig.write_config(tmpdir,
+                TestParseConfig.cluster_block +
+                TestParseConfig.machines_block +
+                TestParseConfig.scenario_block +
+                TestParseConfig.tasks_block)
+        parse = parser.create_parser()
+        args = parse.parse_args(['-c', tmpfile, 'create'])
+        config = utils.parse_config(args, configuration.Configuration())
+        assert config.conf == TestParseConfig.conf_machines
+        assert config.forwards == TestParseConfig.conf_forwards
+        assert config.tasks == TestParseConfig.conf_tasks
 
 class TestParseWordlist:
     def test_wordlist(self):

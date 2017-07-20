@@ -40,11 +40,11 @@ def parse_config(args, configuration):
         sys.exit(1)
 
     if not 'Scenario' in config:
-        print('Did not find a cluster section in "%s"' % args.config)
+        print('Did not find a scenario section in "%s"' % args.config)
         sys.exit(1)
 
     if not 'tasks' in config['Scenario']:
-        print('The "Cluster" section must contain a list of machines')
+        print('The "Scenario" section must contain a list of machines')
         sys.exit(1)
 
     for machine in parse_wordlist(config['Cluster']['machines']):
